@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-deployment
+  namespace: staging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gestion-etablissement
+  template:
+    metadata:
+      labels:
+        app: gestion-etablissement
+    spec:
+      containers:
+      - name: app
+        image: gestion-etablissement:staging
+        ports:
+        - containerPort: 5000
+        resources:
+          limits:
+            cpu: "1"
+            memory: "512Mi"
+          requests:
+            cpu: "0.5"
+            memory: "256Mi"
+        env:
+        - name: NODE_ENV
+          value: staging
+        - name: MONGO_URI
+          value: mongodb://mongodb:27017/gestion_etablissement
+        livenessProbe:
+          httpGet:
+            path: /api/test
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/test
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 5
