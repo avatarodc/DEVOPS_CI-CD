@@ -1,8 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: app-deployment
-  namespace: staging
+  name: gestion-etablissement
 spec:
   replicas: 2
   selector:
@@ -14,31 +13,29 @@ spec:
         app: gestion-etablissement
     spec:
       containers:
-      - name: app
-        image: gestion-etablissement:staging
+      - name: gestion-etablissement
+        image: localhost:5001/gestion-etablissement:latest
         ports:
         - containerPort: 5000
         resources:
           limits:
-            cpu: "1"
+            cpu: "500m"
             memory: "512Mi"
           requests:
-            cpu: "0.5"
+            cpu: "200m"
             memory: "256Mi"
         env:
         - name: NODE_ENV
-          value: staging
-        - name: MONGO_URI
-          value: mongodb://mongodb:27017/gestion_etablissement
-        livenessProbe:
-          httpGet:
-            path: /api/test
-            port: 5000
-          initialDelaySeconds: 30
-          periodSeconds: 10
+          value: "production"
         readinessProbe:
           httpGet:
-            path: /api/test
+            path: /api/health
             port: 5000
           initialDelaySeconds: 5
-          periodSeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 5000
+          initialDelaySeconds: 15
+          periodSeconds: 20
