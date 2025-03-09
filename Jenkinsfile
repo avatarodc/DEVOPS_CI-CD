@@ -55,16 +55,18 @@ pipeline {
             }
         }
         
-        stage('SonarQube Analysis') {
+       stage('SonarQube Analysis') {
             steps {
-                sh '''
-                    npm install -g sonarqube-scanner
-                    sonar-scanner \
-                      -Dsonar.host.url=${SONAR_HOST_URL} \
-                      -Dsonar.projectKey=${APP_NAME} \
-                      -Dsonar.sources=. \
-                      -Dsonar.exclusions=**/node_modules/**,**/*.test.js
-                '''
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    sh '''
+                        npm install -g sonarqube-scanner
+                        sonar-scanner \
+                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.projectKey=${APP_NAME} \
+                        -Dsonar.sources=. \
+                        -Dsonar.exclusions=**/node_modules/**,**/*.test.js
+                    '''
+                }
             }
         }
         
