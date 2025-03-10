@@ -9,7 +9,7 @@ services:
     user: root
     ports:
       - "8080:8080"
-      - "50000:50000"  
+      - "50000:50000"
     volumes:
       - jenkins-data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
@@ -17,15 +17,21 @@ services:
       - devops-network
 
   sonarqube:
-    image: sonarqube:latest
+    image: sonarqube:8.9-community
     container_name: sonarqube
     restart: unless-stopped
     ports:
-      - "9000:9000"
+      - "9005:9000"
     environment:
       - SONAR_JDBC_URL=jdbc:postgresql://sonarqube-db:5432/sonar
       - SONAR_JDBC_USERNAME=sonar
       - SONAR_JDBC_PASSWORD=sonar
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+      - SONAR_SEARCH_JAVAOPTS=-Xms512m -Xmx512m
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     volumes:
       - sonarqube-data:/opt/sonarqube/data
       - sonarqube-extensions:/opt/sonarqube/extensions
@@ -53,8 +59,8 @@ services:
     container_name: artifactory
     restart: unless-stopped
     ports:
-      - "8083:8081" 
-      - "8084:8082" 
+      - "8083:8081"
+      - "8084:8082"
     volumes:
       - artifactory-data:/var/opt/jfrog/artifactory
     networks:
@@ -65,9 +71,60 @@ services:
     container_name: docker-registry
     restart: unless-stopped
     ports:
-      - "5001:5000"  # Changement ici: 5001 au lieu de 5000
+      - "5001:5000"
     volumes:
       - registry-data:/var/lib/registry
+    networks:
+      - devops-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - devops-network
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.17.0
+    container_name: logstash
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+    ports:
+      - "5044:5044"
+    depends_on:
+      - elasticsearch
+    networks:
+      - devops-network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.0
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - devops-network
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:7.17.0
+    container_name: filebeat
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - elasticsearch
+      - logstash
     networks:
       - devops-network
 
@@ -83,3 +140,4 @@ volumes:
   sonarqube-db-data:
   artifactory-data:
   registry-data:
+  elasticsearch-data:
